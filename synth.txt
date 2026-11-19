@@ -1,0 +1,594 @@
+Resources:
+  PipelineArtifactsBucketAEA9A052:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Metadata:
+      aws:cdk:path: MyappInfraPipelineStack/Pipeline/Pipeline/ArtifactsBucket/Resource
+  PipelineArtifactsBucketPolicyF53CCC52:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: PipelineArtifactsBucketAEA9A052
+      PolicyDocument:
+        Statement:
+          - Action: s3:*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+            Effect: Deny
+            Principal:
+              AWS: "*"
+            Resource:
+              - Fn::GetAtt:
+                  - PipelineArtifactsBucketAEA9A052
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - PipelineArtifactsBucketAEA9A052
+                        - Arn
+                    - /*
+          - Action:
+              - s3:GetBucket*
+              - s3:GetObject*
+              - s3:List*
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - :iam::876443017043:role/cdk-hnb659fds-deploy-role-876443017043-us-east-2
+            Resource:
+              - Fn::GetAtt:
+                  - PipelineArtifactsBucketAEA9A052
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - PipelineArtifactsBucketAEA9A052
+                        - Arn
+                    - /*
+        Version: "2012-10-17"
+    Metadata:
+      aws:cdk:path: MyappInfraPipelineStack/Pipeline/Pipeline/ArtifactsBucket/Policy/Resource
+  PipelineRoleB27FAA37:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+        Version: "2012-10-17"
+    Metadata:
+      aws:cdk:path: MyappInfraPipelineStack/Pipeline/Pipeline/Role/Resource
+  PipelineRoleDefaultPolicy7BDC1ABB:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - s3:Abort*
+              - s3:DeleteObject*
+              - s3:GetBucket*
+              - s3:GetObject*
+              - s3:List*
+              - s3:PutObject
+              - s3:PutObjectLegalHold
+              - s3:PutObjectRetention
+              - s3:PutObjectTagging
+              - s3:PutObjectVersionTagging
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - PipelineArtifactsBucketAEA9A052
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - PipelineArtifactsBucketAEA9A052
+                        - Arn
+                    - /*
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - PipelineCodeBuildActionRole226DB0CB
+                  - Arn
+              - Fn::GetAtt:
+                  - PipelineSourceperrytriboletmyappinfraCodePipelineActionRole5E8BEB5D
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - :iam::876443017043:role/cdk-hnb659fds-deploy-role-876443017043-us-east-2
+        Version: "2012-10-17"
+      PolicyName: PipelineRoleDefaultPolicy7BDC1ABB
+      Roles:
+        - Ref: PipelineRoleB27FAA37
+    Metadata:
+      aws:cdk:path: MyappInfraPipelineStack/Pipeline/Pipeline/Role/DefaultPolicy/Resource
+  Pipeline9850B417:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStore:
+        Location:
+          Ref: PipelineArtifactsBucketAEA9A052
+        Type: S3
+      Name: MyappInfraPipeline
+      PipelineType: V2
+      RestartExecutionOnUpdate: true
+      RoleArn:
+        Fn::GetAtt:
+          - PipelineRoleB27FAA37
+          - Arn
+      Stages:
+        - Actions:
+            - ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: "1"
+              Configuration:
+                ConnectionArn: arn:aws:codeconnections:us-east-2:876443017043:connection/c398d8c7-d128-4db7-a433-4deb573030ef
+                FullRepositoryId: perrytribolet/myapp-infra
+                BranchName: main
+              Name: perrytribolet_myapp-infra
+              OutputArtifacts:
+                - Name: perrytribolet_myapp_infra_Source
+              RoleArn:
+                Fn::GetAtt:
+                  - PipelineSourceperrytriboletmyappinfraCodePipelineActionRole5E8BEB5D
+                  - Arn
+              RunOrder: 1
+          Name: Source
+        - Actions:
+            - ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: "1"
+              Configuration:
+                ProjectName:
+                  Ref: PipelineBuildSynthCdkBuildProject6BEFA8E6
+                EnvironmentVariables: '[{"name":"_PROJECT_CONFIG_HASH","type":"PLAINTEXT","value":"3e37e81d31183110032afb968d5001380a6a3560a63aa64ece21f24806cf05bc"}]'
+              InputArtifacts:
+                - Name: perrytribolet_myapp_infra_Source
+              Name: Synth
+              OutputArtifacts:
+                - Name: Synth_Output
+              RoleArn:
+                Fn::GetAtt:
+                  - PipelineCodeBuildActionRole226DB0CB
+                  - Arn
+              RunOrder: 1
+          Name: Build
+        - Actions:
+            - ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: "1"
+              Configuration:
+                ProjectName:
+                  Ref: PipelineUpdatePipelineSelfMutationDAA41400
+                EnvironmentVariables: '[{"name":"_PROJECT_CONFIG_HASH","type":"PLAINTEXT","value":"19600c4a748069f3c441e8b5e22acce522fd7cefa5598baeba6622a2e71605ba"}]'
+              InputArtifacts:
+                - Name: Synth_Output
+              Name: SelfMutate
+              RoleArn:
+                Fn::GetAtt:
+                  - PipelineCodeBuildActionRole226DB0CB
+                  - Arn
+              RunOrder: 1
+          Name: UpdatePipeline
+        - Actions:
+            - ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: "1"
+              Configuration:
+                StackName: Dev-AppStack
+                Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
+                RoleArn:
+                  Fn::Join:
+                    - ""
+                    - - "arn:"
+                      - Ref: AWS::Partition
+                      - :iam::876443017043:role/cdk-hnb659fds-cfn-exec-role-876443017043-us-east-2
+                ActionMode: CHANGE_SET_REPLACE
+                ChangeSetName: PipelineChange
+                TemplatePath: Synth_Output::assembly-MyappInfraPipelineStack-Dev/MyappInfraPipelineStackDevAppStackE5B9CBA4.template.json
+              InputArtifacts:
+                - Name: Synth_Output
+              Name: Prepare
+              RoleArn:
+                Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - :iam::876443017043:role/cdk-hnb659fds-deploy-role-876443017043-us-east-2
+              RunOrder: 1
+            - ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: "1"
+              Configuration:
+                StackName: Dev-AppStack
+                ActionMode: CHANGE_SET_EXECUTE
+                ChangeSetName: PipelineChange
+              Name: Deploy
+              RoleArn:
+                Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - :iam::876443017043:role/cdk-hnb659fds-deploy-role-876443017043-us-east-2
+              RunOrder: 2
+          Name: Dev
+    DependsOn:
+      - PipelineRoleDefaultPolicy7BDC1ABB
+      - PipelineRoleB27FAA37
+    Metadata:
+      aws:cdk:path: MyappInfraPipelineStack/Pipeline/Pipeline/Resource
+  PipelineSourceperrytriboletmyappinfraCodePipelineActionRole5E8BEB5D:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::GetAtt:
+                  - PipelineRoleB27FAA37
+                  - Arn
+        Version: "2012-10-17"
+    Metadata:
+      aws:cdk:path: MyappInfraPipelineStack/Pipeline/Pipeline/Source/perrytribolet_myapp-infra/CodePipelineActionRole/Resource
+  PipelineSourceperrytriboletmyappinfraCodePipelineActionRoleDefaultPolicy84DBAF14:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: codestar-connections:UseConnection
+            Effect: Allow
+            Resource: arn:aws:codeconnections:us-east-2:876443017043:connection/c398d8c7-d128-4db7-a433-4deb573030ef
+          - Action:
+              - s3:Abort*
+              - s3:DeleteObject*
+              - s3:GetBucket*
+              - s3:GetObject*
+              - s3:List*
+              - s3:PutObject
+              - s3:PutObjectLegalHold
+              - s3:PutObjectRetention
+              - s3:PutObjectTagging
+              - s3:PutObjectVersionTagging
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - PipelineArtifactsBucketAEA9A052
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - PipelineArtifactsBucketAEA9A052
+                        - Arn
+                    - /*
+          - Action:
+              - s3:PutObjectAcl
+              - s3:PutObjectVersionAcl
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - Fn::GetAtt:
+                      - PipelineArtifactsBucketAEA9A052
+                      - Arn
+                  - /*
+        Version: "2012-10-17"
+      PolicyName: PipelineSourceperrytriboletmyappinfraCodePipelineActionRoleDefaultPolicy84DBAF14
+      Roles:
+        - Ref: PipelineSourceperrytriboletmyappinfraCodePipelineActionRole5E8BEB5D
+    Metadata:
+      aws:cdk:path: MyappInfraPipelineStack/Pipeline/Pipeline/Source/perrytribolet_myapp-infra/CodePipelineActionRole/DefaultPolicy/Resource
+  PipelineBuildSynthCdkBuildProjectRole231EEA2A:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+        Version: "2012-10-17"
+    Metadata:
+      aws:cdk:path: MyappInfraPipelineStack/Pipeline/Pipeline/Build/Synth/CdkBuildProject/Role/Resource
+  PipelineBuildSynthCdkBuildProjectRoleDefaultPolicyFB6C941C:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - arn:aws:logs:us-east-2:876443017043:log-group:/aws/codebuild/
+                    - Ref: PipelineBuildSynthCdkBuildProject6BEFA8E6
+                    - :*
+              - Fn::Join:
+                  - ""
+                  - - arn:aws:logs:us-east-2:876443017043:log-group:/aws/codebuild/
+                    - Ref: PipelineBuildSynthCdkBuildProject6BEFA8E6
+          - Action:
+              - codebuild:BatchPutCodeCoverages
+              - codebuild:BatchPutTestCases
+              - codebuild:CreateReport
+              - codebuild:CreateReportGroup
+              - codebuild:UpdateReport
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - arn:aws:codebuild:us-east-2:876443017043:report-group/
+                  - Ref: PipelineBuildSynthCdkBuildProject6BEFA8E6
+                  - -*
+          - Action:
+              - s3:Abort*
+              - s3:DeleteObject*
+              - s3:GetBucket*
+              - s3:GetObject*
+              - s3:List*
+              - s3:PutObject
+              - s3:PutObjectLegalHold
+              - s3:PutObjectRetention
+              - s3:PutObjectTagging
+              - s3:PutObjectVersionTagging
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - PipelineArtifactsBucketAEA9A052
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - PipelineArtifactsBucketAEA9A052
+                        - Arn
+                    - /*
+        Version: "2012-10-17"
+      PolicyName: PipelineBuildSynthCdkBuildProjectRoleDefaultPolicyFB6C941C
+      Roles:
+        - Ref: PipelineBuildSynthCdkBuildProjectRole231EEA2A
+    Metadata:
+      aws:cdk:path: MyappInfraPipelineStack/Pipeline/Pipeline/Build/Synth/CdkBuildProject/Role/DefaultPolicy/Resource
+  PipelineBuildSynthCdkBuildProject6BEFA8E6:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Type: CODEPIPELINE
+      Cache:
+        Type: NO_CACHE
+      Description: Pipeline step MyappInfraPipelineStack/Pipeline/Build/Synth
+      EncryptionKey: alias/aws/s3
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: false
+        Type: LINUX_CONTAINER
+      ServiceRole:
+        Fn::GetAtt:
+          - PipelineBuildSynthCdkBuildProjectRole231EEA2A
+          - Arn
+      Source:
+        BuildSpec: |-
+          {
+            "version": "0.2",
+            "phases": {
+              "build": {
+                "commands": [
+                  "npm install -g aws-cdk",
+                  "cdk synth"
+                ]
+              }
+            },
+            "artifacts": {
+              "base-directory": "cdk.out",
+              "files": "**/*"
+            }
+          }
+        Type: CODEPIPELINE
+    Metadata:
+      aws:cdk:path: MyappInfraPipelineStack/Pipeline/Pipeline/Build/Synth/CdkBuildProject/Resource
+  PipelineCodeBuildActionRole226DB0CB:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::GetAtt:
+                  - PipelineRoleB27FAA37
+                  - Arn
+        Version: "2012-10-17"
+    Metadata:
+      aws:cdk:path: MyappInfraPipelineStack/Pipeline/CodeBuildActionRole/Resource
+  PipelineCodeBuildActionRoleDefaultPolicy1D62A6FE:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - codebuild:BatchGetBuilds
+              - codebuild:StartBuild
+              - codebuild:StopBuild
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - PipelineBuildSynthCdkBuildProject6BEFA8E6
+                  - Arn
+              - Fn::GetAtt:
+                  - PipelineUpdatePipelineSelfMutationDAA41400
+                  - Arn
+        Version: "2012-10-17"
+      PolicyName: PipelineCodeBuildActionRoleDefaultPolicy1D62A6FE
+      Roles:
+        - Ref: PipelineCodeBuildActionRole226DB0CB
+    Metadata:
+      aws:cdk:path: MyappInfraPipelineStack/Pipeline/CodeBuildActionRole/DefaultPolicy/Resource
+  PipelineUpdatePipelineSelfMutationRole57E559E8:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+        Version: "2012-10-17"
+    Metadata:
+      aws:cdk:path: MyappInfraPipelineStack/Pipeline/UpdatePipeline/SelfMutation/Role/Resource
+  PipelineUpdatePipelineSelfMutationRoleDefaultPolicyA225DA4E:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - arn:aws:logs:us-east-2:876443017043:log-group:/aws/codebuild/
+                    - Ref: PipelineUpdatePipelineSelfMutationDAA41400
+                    - :*
+              - Fn::Join:
+                  - ""
+                  - - arn:aws:logs:us-east-2:876443017043:log-group:/aws/codebuild/
+                    - Ref: PipelineUpdatePipelineSelfMutationDAA41400
+          - Action:
+              - codebuild:BatchPutCodeCoverages
+              - codebuild:BatchPutTestCases
+              - codebuild:CreateReport
+              - codebuild:CreateReportGroup
+              - codebuild:UpdateReport
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - arn:aws:codebuild:us-east-2:876443017043:report-group/
+                  - Ref: PipelineUpdatePipelineSelfMutationDAA41400
+                  - -*
+          - Action: sts:AssumeRole
+            Condition:
+              ForAnyValue:StringEquals:
+                iam:ResourceTag/aws-cdk:bootstrap-role:
+                  - image-publishing
+                  - file-publishing
+                  - deploy
+            Effect: Allow
+            Resource: arn:*:iam::876443017043:role/*
+          - Action:
+              - cloudformation:DescribeStacks
+              - s3:ListBucket
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - s3:GetBucket*
+              - s3:GetObject*
+              - s3:List*
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - PipelineArtifactsBucketAEA9A052
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - PipelineArtifactsBucketAEA9A052
+                        - Arn
+                    - /*
+        Version: "2012-10-17"
+      PolicyName: PipelineUpdatePipelineSelfMutationRoleDefaultPolicyA225DA4E
+      Roles:
+        - Ref: PipelineUpdatePipelineSelfMutationRole57E559E8
+    Metadata:
+      aws:cdk:path: MyappInfraPipelineStack/Pipeline/UpdatePipeline/SelfMutation/Role/DefaultPolicy/Resource
+  PipelineUpdatePipelineSelfMutationDAA41400:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Type: CODEPIPELINE
+      Cache:
+        Type: NO_CACHE
+      Description: Pipeline step MyappInfraPipelineStack/Pipeline/UpdatePipeline/SelfMutate
+      EncryptionKey: alias/aws/s3
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: false
+        Type: LINUX_CONTAINER
+      Name: MyappInfraPipeline-selfupdate
+      ServiceRole:
+        Fn::GetAtt:
+          - PipelineUpdatePipelineSelfMutationRole57E559E8
+          - Arn
+      Source:
+        BuildSpec: |-
+          {
+            "version": "0.2",
+            "phases": {
+              "install": {
+                "commands": [
+                  "npm install -g aws-cdk@2"
+                ]
+              },
+              "build": {
+                "commands": [
+                  "cdk -a . deploy MyappInfraPipelineStack --require-approval=never --verbose"
+                ]
+              }
+            }
+          }
+        Type: CODEPIPELINE
+    Metadata:
+      aws:cdk:path: MyappInfraPipelineStack/Pipeline/UpdatePipeline/SelfMutation/Resource
+  CDKMetadata:
+    Type: AWS::CDK::Metadata
+    Properties:
+      Analytics: v2:deflate64:H4sIAAAAAAAA/91WbW/aMBD+LfXHyrgMtBch7UNK2TQxGALWLwhVxjmYi7Ej22kXWfnvk+M40FWbtnUrXZVESe65893znOO4QzqvX5L2Cb01LZZuW4KviJtZyrY44xkILsGQvkphUr9hemuuHFMpRJy4iC0cisYx3QHqoVOEG9O8yLzpsoMwgq/AcsuVHKk0+jGtjEkYU7m0QygM6q2pMFADU9hwJaeQCc6ojzzP2RasqYM15Ab6e8dZnmVK24rJ3sdYqu0g5v4kP2cptYB6VueAkVYi1gKSrgQMoZgqW2Wr7VRbvqbMhuS1MTeNOlMl4J3SCfMxkUGJHaJpOrN0A6i3cMj4p0ahcvkYDkvcX8tYZolNl7hAYuHQqno4aBlIpovMcxhCcc+Gemg4ml2NknHyfnBRQWulGcxmH6OUK6HYdpKvBGcJY2D2LdipGyomSnDmB9ZgKZcoVBfqweEWXJriahp7t4CXmNMdcV72hUPUmHwH6XmBeg5lmkvGMyrqKRU7WPn4gNCkMHBo/l6vIOdcTeIgseKFq8W2lrIvH6RXs8HQKfoF8OfjHgv9Y+l89EZTaZMGvsf290o5irR3+o8fqMdTJHjAqJ7hT6Rrf7WM59/Gf4NWK6vXANcLr5cm0pir7xvzA3P1B7KwA+l/zAdpH9d8pNqfadr/eCaETU+9U/B71lXORbrfsE60ugZmF67Ed88QGNCyxFMwKtcMqq/igdeyxBfKjsGevSFt0u2ekfFg3lcakixrXYI2XMm3N69I++wFafvj5Npw3tK5tHwHZBru3wCPt+JPuAsAAA==
+    Metadata:
+      aws:cdk:path: MyappInfraPipelineStack/CDKMetadata/Default
+Parameters:
+  BootstrapVersion:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /cdk-bootstrap/hnb659fds/version
+    Description: Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]
+
