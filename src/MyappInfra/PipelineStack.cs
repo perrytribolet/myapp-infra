@@ -47,11 +47,11 @@ namespace MyappInfra
 
             pipeline.AddStage(new AppStage(this, "Dev", new StageProps { Env = env }));
 
-            // Later, add a Prod stage that waits for your approval in the console:
-            // pipeline.AddStage(new AppStage(this, "Prod", new StageProps { Env = env }), new AddStageOpts
-            // {
-            //     Pre = new Step[] { new ManualApprovalStep("ApproveProd") }
-            // });
+            // Add a Prod stage that waits for your approval in the console:
+            pipeline.AddStage(new AppStage(this, "Prod", new StageProps { Env = env }), new AddStageOpts
+            {
+                Pre = new Step[] { new ManualApprovalStep("ApproveProd") }
+            });
         }
     }
 }
