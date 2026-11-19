@@ -25,7 +25,7 @@ def home():
       <head><title>MyappInfra</title></head>
       <body style="font-family: sans-serif; max-width: 600px; margin: 40px auto;">
         <h1>Hello from FastAPI on AWS Lambda</h1>
-        <p>Deployed by a CDK Pipeline.</p>
+        <p>Deployed by a CDK Pipeline, by Perry Tribolet.</p>
         <ul>
           <li><a href="/docs">Interactive API docs</a></li>
           <li><a href="/health">Health check</a></li>
