@@ -29,7 +29,7 @@ def home():
         <ul>
           <li><a href="/docs">Interactive API docs</a></li>
           <li><a href="/health">Health check</a></li>
-          <li><a href="/hello?name=Perry">Say hello</a></li>
+          <li><a href="/hello?name=Peter">Say hello</a></li>
         </ul>
       </body>
     </html>
